@@ -21,7 +21,23 @@ type options struct {
 
 var opts options
 
-func ExampleRDS_DescribeDBSnapshots_shared00(c string) {
+func checkContainsList(c string, s []*rds.DBSnapshot) bool {
+	for _, s := range s {
+		if strings.Index(*s.DBSnapshotIdentifier, c) == 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func getFormatDate() string {
+	t := time.Now().Add(-24 * time.Hour)
+	const layout2 = "2006-01-02"
+	d := fmt.Sprintf(t.Format(layout2))
+	return fmt.Sprintf("rds:%s-%s-", opts.DB_NAME, d)
+}
+
+func getSnapShotList() bool {
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		Profile:           opts.Profile,
 		SharedConfigState: session.SharedConfigEnable,
@@ -49,13 +65,8 @@ func ExampleRDS_DescribeDBSnapshots_shared00(c string) {
 		} else {
 			fmt.Println(err.Error())
 		}
-		return
 	}
-	for _, s := range result.DBSnapshots {
-		if strings.Index(*s.DBSnapshotIdentifier, c) == 0 {
-			fmt.Println("Contain")
-		}
-	}
+	return checkContainsList(getFormatDate(), result.DBSnapshots)
 }
 
 func Do() {
@@ -64,10 +75,8 @@ func Do() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-
-	t := time.Now().Add(-24 * time.Hour)
-	const layout2 = "2006-01-02"
-	d := fmt.Sprintf(t.Format(layout2))
-	s := fmt.Sprintf("rds:%s-%s-", opts.DB_NAME, d)
-	ExampleRDS_DescribeDBSnapshots_shared00(s)
+	if !getSnapShotList() {
+		fmt.Println("fail snapshot")
+	}
+	fmt.Println("success")
 }
